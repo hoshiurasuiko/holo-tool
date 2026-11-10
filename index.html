@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ホロスコープ AIプロンプトジェネレーター</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card-bg: #ffffff;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 2rem 1rem;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 640px;
+      background: var(--card-bg);
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    }
+    h1 {
+      font-size: 1.4rem;
+      margin-bottom: 0.5rem;
+      color: #0f172a;
+    }
+    p.desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+    }
+    .form-group {
+      margin-bottom: 1.2rem;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+      color: #334155;
+    }
+    input, select {
+      width: 100%;
+      padding: 0.6rem 0.8rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus {
+      border-color: var(--primary);
+    }
+    .btn {
+      display: inline-block;
+      width: 100%;
+      padding: 0.75rem;
+      background-color: var(--primary);
+      color: #fff;
+      font-weight: 600;
+      font-size: 1rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      margin-top: 0.5rem;
+    }
+    .btn:hover {
+      background-color: var(--primary-hover);
+    }
+    .output-area {
+      margin-top: 2rem;
+      display: none;
+    }
+    .output-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .output-header span {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #334155;
+    }
+    .copy-btn {
+      padding: 0.3rem 0.7rem;
+      font-size: 0.8rem;
+      background-color: #f1f5f9;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .copy-btn:hover {
+      background-color: #e2e8f0;
+    }
+    textarea {
+      width: 100%;
+      height: 220px;
+      padding: 0.8rem;
+      font-family: monospace;
+      font-size: 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #f8fafc;
+      resize: vertical;
+      color: #334155;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>ホロスコープ AI解析プロンプト生成</h1>
+    <p class="desc">出生データを入力すると、曖昧なバーナム効果を排した職人的占星術解析プロンプトを瞬時に生成します。</p>
+
+    <div class="form-group">
+      <label for="birthDate">生年月日</label>
+      <input type="date" id="birthDate" value="1990-01-01">
+    </div>
+
+    <div class="form-group">
+      <label for="birthTime">出生時間（不明の場合は 12:00）</label>
+      <input type="time" id="birthTime" value="12:00">
+    </div>
+
+    <div class="form-group">
+      <label for="birthPlace">出生地（都道府県・市区町村）</label>
+      <input type="text" id="birthPlace" placeholder="例: 愛知県名古屋市" value="東京都千代田区">
+    </div>
+
+    <button class="btn" onclick="generatePrompt()">プロンプトを生成する</button>
+
+    <div class="output-area" id="outputArea">
+      <div class="output-header">
+        <span>生成されたプロンプト</span>
+        <button class="copy-btn" onclick="copyText()">コピー</button>
+      </div>
+      <textarea id="promptResult" readonly></textarea>
+    </div>
+  </div>
+
+  <script>
+    function generatePrompt() {
+      const date = document.getElementById('birthDate').value;
+      const time = document.getElementById('birthTime').value;
+      const place = document.getElementById('birthPlace').value;
+
+      if (!date) {
+        alert('生年月日を入力してください');
+        return;
+      }
+
+      const prompt = `# 命令
+以下の出生データに基づき、西洋占星術の精密な天体計算・ハウス・アスペクトロジックを用いて対象者のネイタルチャートを詳細に解析してください。
+
+# 前提・方針
+- 誰にでも当てはまるような曖昧な表現（バーナム効果）や耳障りの良い慰め・一般論は一切不要です。
+- 天体の配置度数、エレメント・クオリティの過不足、アスペクトのオーブ、ハードアスペクトによる葛藤と緊張、それによって生じる具体的な職能・行動特性を容赦なく論理的に構造化して記述してください。
+
+# 対象者データ
+- 生年月日: ${date}
+- 出生時間: ${time}
+- 出生地: ${place}
+
+# 出力フォーマット
+1. 構造サマリー（主たる天体バランスと特異点）
+2. 職能・適性分析（組織適性、単独職人適性、強みと弱み）
+3. 心理的葛藤とボトルネック（要注意のアスペクト配置）
+4. 具体的な実生活・キャリアへの指針`;
+
+      document.getElementById('promptResult').value = prompt;
+      document.getElementById('outputArea').style.display = 'block';
+    }
+
+    function copyText() {
+      const copyText = document.getElementById('promptResult');
+      copyText.select();
+      navigator.clipboard.writeText(copyText.value);
+      alert('プロンプトをクリップボードにコピーしました！');
+    }
+  </script>
+
+</body>
+</html>
