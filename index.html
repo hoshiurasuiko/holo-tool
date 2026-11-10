@@ -3,16 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ホロスコープ AIプロンプトジェネレーター</title>
+  <title>ホロスコープ解析 ＆ AIプロンプトジェネレーター</title>
+  <!-- 天文学計算ライブラリ astronomy-engine -->
+  <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
   <style>
     :root {
-      --bg: #f4f6f9;
+      --bg: #f8fafc;
       --card-bg: #ffffff;
-      --primary: #3b82f6;
-      --primary-hover: #2563eb;
-      --text: #1e293b;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --text: #0f172a;
       --text-muted: #64748b;
-      --border: #e2e8f0;
+      --border: #cbd5e1;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -20,52 +22,81 @@
       background-color: var(--bg);
       color: var(--text);
       line-height: 1.6;
-      padding: 2rem 1rem;
+      padding: 1.5rem 1rem;
       display: flex;
       justify-content: center;
     }
     .container {
       width: 100%;
-      max-width: 640px;
+      max-width: 760px;
       background: var(--card-bg);
-      padding: 2rem;
+      padding: 1.8rem;
       border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     }
     h1 {
-      font-size: 1.4rem;
-      margin-bottom: 0.5rem;
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
       color: #0f172a;
     }
     p.desc {
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       color: var(--text-muted);
       margin-bottom: 1.5rem;
     }
-    .form-group {
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 0.8rem;
+      border-left: 4px solid var(--primary);
+      padding-left: 0.5rem;
+    }
+    .input-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
       margin-bottom: 1.2rem;
     }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
     label {
-      display: block;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 600;
       margin-bottom: 0.3rem;
       color: #334155;
     }
-    input, select {
-      width: 100%;
-      padding: 0.6rem 0.8rem;
+    .select-group {
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
+    }
+    select, input[type="text"] {
+      padding: 0.55rem 0.5rem;
       border: 1px solid var(--border);
       border-radius: 6px;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       outline: none;
-      transition: border-color 0.2s;
+      background: #fff;
+      color: var(--text);
+      flex: 1;
     }
-    input:focus, select:focus {
+    select:focus, input[type="text"]:focus {
       border-color: var(--primary);
     }
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+      cursor: pointer;
+    }
     .btn {
-      display: inline-block;
+      display: block;
       width: 100%;
       padding: 0.75rem;
       background-color: var(--primary);
@@ -73,14 +104,39 @@
       font-weight: 600;
       font-size: 1rem;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
+      margin-top: 1rem;
       transition: background-color 0.2s;
-      margin-top: 0.5rem;
     }
     .btn:hover {
       background-color: var(--primary-hover);
     }
+    /* チャート描画エリア */
+    .chart-container {
+      margin-top: 2rem;
+      text-align: center;
+      display: none;
+    }
+    canvas {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+    .chart-info {
+      margin-top: 1rem;
+      font-size: 0.8rem;
+      text-align: left;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 0.4rem;
+      background: #f1f5f9;
+      padding: 0.8rem;
+      border-radius: 6px;
+    }
+    /* プロンプト出力エリア */
     .output-area {
       margin-top: 2rem;
       display: none;
@@ -97,100 +153,456 @@
       color: #334155;
     }
     .copy-btn {
-      padding: 0.3rem 0.7rem;
+      padding: 0.35rem 0.8rem;
       font-size: 0.8rem;
       background-color: #f1f5f9;
       border: 1px solid var(--border);
       border-radius: 4px;
       cursor: pointer;
+      font-weight: 600;
     }
     .copy-btn:hover {
       background-color: #e2e8f0;
     }
     textarea {
       width: 100%;
-      height: 220px;
+      height: 250px;
       padding: 0.8rem;
-      font-family: monospace;
+      font-family: Consolas, Monaco, "Courier New", monospace;
       font-size: 0.85rem;
       border: 1px solid var(--border);
       border-radius: 6px;
       background: #f8fafc;
+      color: #1e293b;
       resize: vertical;
-      color: #334155;
     }
   </style>
 </head>
 <body>
 
   <div class="container">
-    <h1>ホロスコープ AI解析プロンプト生成</h1>
-    <p class="desc">出生データを入力すると、曖昧なバーナム効果を排した職人的占星術解析プロンプトを瞬時に生成します。</p>
+    <h1>ホロスコープ AI精密プロンプト生成</h1>
+    <p class="desc">生年月日・時間・出生地から精密な天体位置（黄経度数）とチャートを直接計算・描画します。</p>
 
-    <div class="form-group">
-      <label for="birthDate">生年月日</label>
-      <input type="date" id="birthDate" value="1990-01-01">
+    <div class="section-title">出生データの入力</div>
+
+    <div class="input-grid">
+      <!-- 生年月日 -->
+      <div class="form-group">
+        <label>生年月日</label>
+        <div class="select-group">
+          <select id="birthYear"></select><span style="font-size: 0.8rem;">年</span>
+          <select id="birthMonth"></select><span style="font-size: 0.8rem;">月</span>
+          <select id="birthDay"></select><span style="font-size: 0.8rem;">日</span>
+        </div>
+      </div>
+
+      <!-- 出生時間 -->
+      <div class="form-group">
+        <label>出生時間</label>
+        <div class="select-group">
+          <select id="birthHour"></select><span style="font-size: 0.8rem;">時</span>
+          <select id="birthMinute"></select><span style="font-size: 0.8rem;">分</span>
+        </div>
+        <label class="checkbox-label">
+          <input type="checkbox" id="timeUnknown" onchange="toggleTimeUnknown(this)"> 時間不明（12:00で計算）
+        </label>
+      </div>
+
+      <!-- 出生地 (47都道府県) -->
+      <div class="form-group">
+        <label for="prefecture">出生地（都道府県）</label>
+        <select id="prefecture"></select>
+      </div>
     </div>
 
-    <div class="form-group">
-      <label for="birthTime">出生時間（不明の場合は 12:00）</label>
-      <input type="time" id="birthTime" value="12:00">
+    <button class="btn" onclick="calculateAndRender()">ホロスコープ作成 ＆ プロンプト生成</button>
+
+    <!-- 円形チャート描画エリア -->
+    <div class="chart-container" id="chartArea">
+      <div class="section-title" style="text-align: left;">ネイタルチャート（ホロスコープ）</div>
+      <canvas id="horoCanvas" width="560" height="560"></canvas>
+      <div class="chart-info" id="planetList"></div>
     </div>
 
-    <div class="form-group">
-      <label for="birthPlace">出生地（都道府県・市区町村）</label>
-      <input type="text" id="birthPlace" placeholder="例: 愛知県名古屋市" value="東京都千代田区">
-    </div>
-
-    <button class="btn" onclick="generatePrompt()">プロンプトを生成する</button>
-
+    <!-- AIプロンプト出力エリア -->
     <div class="output-area" id="outputArea">
       <div class="output-header">
-        <span>生成されたプロンプト</span>
-        <button class="copy-btn" onclick="copyText()">コピー</button>
+        <span>AI解析用コピペプロンプト（計算度数埋め込み済み）</span>
+        <button class="copy-btn" onclick="copyPrompt()">プロンプトをコピー</button>
       </div>
-      <textarea id="promptResult" readonly></textarea>
+      <textarea id="promptText" readonly></textarea>
     </div>
   </div>
 
   <script>
-    function generatePrompt() {
-      const date = document.getElementById('birthDate').value;
-      const time = document.getElementById('birthTime').value;
-      const place = document.getElementById('birthPlace').value;
+    // 47都道府県の県庁所在地データ（緯度・経度）
+    const PREFECTURES = [
+      { name: "北海道 (札幌)", lat: 43.06417, lng: 141.34694 },
+      { name: "青森県", lat: 40.82444, lng: 140.74 },
+      { name: "岩手県 (盛岡)", lat: 39.70361, lng: 141.1525 },
+      { name: "宮城県 (仙台)", lat: 38.26889, lng: 140.87194 },
+      { name: "秋田県", lat: 39.71861, lng: 140.1025 },
+      { name: "山形県", lat: 38.24056, lng: 140.36333 },
+      { name: "福島県", lat: 37.75, lng: 140.46778 },
+      { name: "茨城県 (水戸)", lat: 36.34139, lng: 140.44667 },
+      { name: "栃木県 (宇都宮)", lat: 36.56583, lng: 139.88361 },
+      { name: "群馬県 (前橋)", lat: 36.39111, lng: 139.06083 },
+      { name: "埼玉県", lat: 35.85694, lng: 139.64889 },
+      { name: "千葉県", lat: 35.60472, lng: 140.12333 },
+      { name: "東京都 (新宿)", lat: 35.68944, lng: 139.69167 },
+      { name: "神奈川県 (横浜)", lat: 35.44778, lng: 139.6425 },
+      { name: "新潟県", lat: 37.90222, lng: 139.02361 },
+      { name: "富山県", lat: 36.69528, lng: 137.21139 },
+      { name: "石川県 (金沢)", lat: 36.59444, lng: 136.62556 },
+      { name: "福井県", lat: 36.06528, lng: 136.22194 },
+      { name: "山梨県 (甲府)", lat: 35.66389, lng: 138.56833 },
+      { name: "長野県", lat: 36.65139, lng: 138.18111 },
+      { name: "岐阜県", lat: 35.39111, lng: 136.72222 },
+      { name: "静岡県", lat: 34.97694, lng: 138.38306 },
+      { name: "愛知県 (名古屋)", lat: 35.18028, lng: 136.90667 },
+      { name: "三重県 (津)", lat: 34.73028, lng: 136.50861 },
+      { name: "滋賀県 (大津)", lat: 35.00444, lng: 135.86833 },
+      { name: "京都府", lat: 35.02139, lng: 135.75556 },
+      { name: "大阪府", lat: 34.68639, lng: 135.52 },
+      { name: "兵庫県 (神戸)", lat: 34.69139, lng: 135.18306 },
+      { name: "奈良県", lat: 34.68528, lng: 135.83278 },
+      { name: "和歌山県", lat: 34.22611, lng: 135.1675 },
+      { name: "鳥取県", lat: 35.50361, lng: 134.23833 },
+      { name: "島根県 (松江)", lat: 35.47222, lng: 133.05056 },
+      { name: "岡山県", lat: 34.66167, lng: 133.935 },
+      { name: "広島県", lat: 34.39639, lng: 132.45944 },
+      { name: "山口県", lat: 34.18583, lng: 131.47139 },
+      { name: "徳島県", lat: 34.06583, lng: 134.55944 },
+      { name: "香川県 (高松)", lat: 34.34028, lng: 134.04333 },
+      { name: "愛媛県 (松山)", lat: 33.84167, lng: 132.76611 },
+      { name: "高知県", lat: 33.55972, lng: 133.53111 },
+      { name: "福岡県", lat: 33.60639, lng: 130.41806 },
+      { name: "佐賀県", lat: 33.24944, lng: 130.29889 },
+      { name: "長崎県", lat: 32.74472, lng: 129.87361 },
+      { name: "熊本県", lat: 32.78972, lng: 130.74167 },
+      { name: "大分県", lat: 33.23806, lng: 131.6125 },
+      { name: "宮崎県", lat: 31.91111, lng: 131.42389 },
+      { name: "鹿児島県", lat: 31.56028, lng: 130.55806 },
+      { name: "沖縄県 (那覇)", lat: 26.2125, lng: 127.68111 }
+    ];
 
-      if (!date) {
-        alert('生年月日を入力してください');
-        return;
+    // 12サイン定義
+    const ZODIAC = [
+      { name: "牡羊座", symbol: "♈", start: 0 },
+      { name: "牡牛座", symbol: "♉", start: 30 },
+      { name: "双子座", symbol: "♊", start: 60 },
+      { name: "蟹座",   symbol: "♋", start: 90 },
+      { name: "獅子座", symbol: "♌", start: 120 },
+      { name: "乙女座", symbol: "♍", start: 150 },
+      { name: "天秤座", symbol: "♎", start: 180 },
+      { name: "蠍座",   symbol: "♏", start: 210 },
+      { name: "射手座", symbol: "♐", start: 240 },
+      { name: "山羊座", symbol: "♑", start: 270 },
+      { name: "水瓶座", symbol: "♒", start: 300 },
+      { name: "魚座",   symbol: "♓", start: 330 }
+    ];
+
+    // 対象天体
+    const PLANET_DEFS = [
+      { id: "Sun", name: "太陽", symbol: "☉", color: "#f59e0b" },
+      { id: "Moon", name: "月", symbol: "☽", color: "#64748b" },
+      { id: "Mercury", name: "水星", symbol: "☿", color: "#06b6d4" },
+      { id: "Venus", name: "金星", symbol: "♀", color: "#ec4899" },
+      { id: "Mars", name: "火星", symbol: "♂", color: "#ef4444" },
+      { id: "Jupiter", name: "木星", symbol: "♃", color: "#8b5cf6" },
+      { id: "Saturn", name: "土星", symbol: "♄", color: "#475569" },
+      { id: "Uranus", name: "天王星", symbol: "♅", color: "#0284c7" },
+      { id: "Neptune", name: "海王星", symbol: "♆", color: "#3b82f6" },
+      { id: "Pluto", name: "冥王星", symbol: "♇", color: "#334155" }
+    ];
+
+    // 初期セレクトボックス生成
+    window.addEventListener("DOMContentLoaded", () => {
+      // 年 (1920〜2035)
+      const yearSel = document.getElementById("birthYear");
+      for (let y = 2035; y >= 1920; y--) {
+        const opt = new Option(y, y);
+        if (y === 1990) opt.selected = true;
+        yearSel.add(opt);
       }
 
-      const prompt = `# 命令
-以下の出生データに基づき、西洋占星術の精密な天体計算・ハウス・アスペクトロジックを用いて対象者のネイタルチャートを詳細に解析してください。
+      // 月 (1〜12)
+      const monthSel = document.getElementById("birthMonth");
+      for (let m = 1; m <= 12; m++) {
+        monthSel.add(new Option(m, m));
+      }
 
-# 前提・方針
-- 誰にでも当てはまるような曖昧な表現（バーナム効果）や耳障りの良い慰め・一般論は一切不要です。
-- 天体の配置度数、エレメント・クオリティの過不足、アスペクトのオーブ、ハードアスペクトによる葛藤と緊張、それによって生じる具体的な職能・行動特性を容赦なく論理的に構造化して記述してください。
+      // 日 (1〜31)
+      const daySel = document.getElementById("birthDay");
+      for (let d = 1; d <= 31; d++) {
+        daySel.add(new Option(d, d));
+      }
 
-# 対象者データ
-- 生年月日: ${date}
-- 出生時間: ${time}
-- 出生地: ${place}
+      // 時 (00〜23)
+      const hourSel = document.getElementById("birthHour");
+      for (let h = 0; h < 24; h++) {
+        const val = h.toString().padStart(2, "0");
+        const opt = new Option(val, val);
+        if (h === 12) opt.selected = true;
+        hourSel.add(opt);
+      }
 
-# 出力フォーマット
-1. 構造サマリー（主たる天体バランスと特異点）
-2. 職能・適性分析（組織適性、単独職人適性、強みと弱み）
-3. 心理的葛藤とボトルネック（要注意のアスペクト配置）
-4. 具体的な実生活・キャリアへの指針`;
+      // 分 (00〜59)
+      const minSel = document.getElementById("birthMinute");
+      for (let min = 0; min < 60; min++) {
+        const val = min.toString().padStart(2, "0");
+        minSel.add(new Option(val, val));
+      }
 
-      document.getElementById('promptResult').value = prompt;
-      document.getElementById('outputArea').style.display = 'block';
+      // 都道府県
+      const prefSel = document.getElementById("prefecture");
+      PREFECTURES.forEach((p, idx) => {
+        const opt = new Option(p.name, idx);
+        if (p.name.includes("愛知県")) opt.selected = true; // デフォルト愛知
+        prefSel.add(opt);
+      });
+    });
+
+    function toggleTimeUnknown(cb) {
+      document.getElementById("birthHour").disabled = cb.checked;
+      document.getElementById("birthMinute").disabled = cb.checked;
+      if (cb.checked) {
+        document.getElementById("birthHour").value = "12";
+        document.getElementById("birthMinute").value = "00";
+      }
     }
 
-    function copyText() {
-      const copyText = document.getElementById('promptResult');
-      copyText.select();
-      navigator.clipboard.writeText(copyText.value);
-      alert('プロンプトをクリップボードにコピーしました！');
+    // 度数からサイン・度・分に変換
+    function degToSign(deg) {
+      let d = (deg % 360 + 360) % 360;
+      const signIdx = Math.floor(d / 30);
+      const signDeg = Math.floor(d % 30);
+      const signMin = Math.floor((d % 1) * 60);
+      return {
+        signName: ZODIAC[signIdx].name,
+        symbol: ZODIAC[signIdx].symbol,
+        degInSign: signDeg,
+        minInSign: signMin,
+        totalDeg: d
+      };
+    }
+
+    // 計算 ＆ チャート描画
+    function calculateAndRender() {
+      const y = parseInt(document.getElementById("birthYear").value);
+      const m = parseInt(document.getElementById("birthMonth").value);
+      const d = parseInt(document.getElementById("birthDay").value);
+      const h = parseInt(document.getElementById("birthHour").value);
+      const min = parseInt(document.getElementById("birthMinute").value);
+      const pref = PREFECTURES[document.getElementById("prefecture").value];
+      const timeUnknown = document.getElementById("timeUnknown").checked;
+
+      // 日本時間(JST = UTC+9)をUTCに換算
+      const localDate = new Date(Date.UTC(y, m - 1, d, h - 9, min, 0));
+      const astroTime = Astronomy.MakeTime(localDate);
+      const observer = new Astronomy.Observer(pref.lat, pref.lng, 0);
+
+      // 各天体の黄経度数計算 (Ecliptic Longitude)
+      const calculatedPlanets = PLANET_DEFS.map(p => {
+        let ecl;
+        if (p.id === "Sun") {
+          ecl = Astronomy.SunPosition(astroTime);
+        } else if (p.id === "Moon") {
+          ecl = Astronomy.Ecliptic(Astronomy.GeoMoon(astroTime));
+        } else {
+          const body = Astronomy.Body[p.id];
+          const equ = Astronomy.Equator(body, astroTime, observer, true, true);
+          ecl = Astronomy.Ecliptic(equ);
+        }
+        const signInfo = degToSign(ecl.elon);
+        return {
+          ...p,
+          elon: ecl.elon,
+          ...signInfo
+        };
+      });
+
+      // アスペクトの判定 (主要5メジャーアスペクト)
+      const aspects = [];
+      const aspectRules = [
+        { type: "Conjunction (合)", angle: 0, orb: 7, color: "#2563eb" },
+        { type: "Opposition (衝)", angle: 180, orb: 7, color: "#dc2626" },
+        { type: "Trine (三分)", angle: 120, orb: 6, color: "#16a34a" },
+        { type: "Square (四分)", angle: 90, orb: 6, color: "#ea580c" },
+        { type: "Sextile (六分)", angle: 60, orb: 4, color: "#0891b2" }
+      ];
+
+      for (let i = 0; i < calculatedPlanets.length; i++) {
+        for (let j = i + 1; j < calculatedPlanets.length; j++) {
+          const p1 = calculatedPlanets[i];
+          const p2 = calculatedPlanets[j];
+          let diff = Math.abs(p1.totalDeg - p2.totalDeg);
+          if (diff > 180) diff = 360 - diff;
+
+          for (const rule of aspectRules) {
+            if (Math.abs(diff - rule.angle) <= rule.orb) {
+              aspects.push({
+                p1: p1.name,
+                p2: p2.name,
+                type: rule.type,
+                angle: diff.toFixed(1),
+                color: rule.color
+              });
+              break;
+            }
+          }
+        }
+      }
+
+      // チャートの描画
+      drawChart(calculatedPlanets, aspects);
+
+      // 天体一覧リストを表示
+      const listEl = document.getElementById("planetList");
+      listEl.innerHTML = calculatedPlanets.map(p => `
+        <div><strong>${p.symbol} ${p.name}:</strong> ${p.signName} ${p.degInSign}°${p.minInSign}'</div>
+      `).join("");
+
+      // AIプロンプトの生成
+      generateAiPrompt(y, m, d, h, min, pref.name, timeUnknown, calculatedPlanets, aspects);
+
+      // 表示切り替え
+      document.getElementById("chartArea").style.display = "block";
+      document.getElementById("outputArea").style.display = "block";
+    }
+
+    // Canvasによるホロスコープ円盤の描画
+    function drawChart(planets, aspects) {
+      const canvas = document.getElementById("horoCanvas");
+      const ctx = canvas.getContext("2d");
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const rOuter = 240;
+      const rZodiac = 190;
+      const rInner = 140;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 外枠の円
+      ctx.strokeStyle = "#94a3b8";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, rOuter, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, rZodiac, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, rInner, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 12サインの分割と記号描画 (牡羊座0度を左側・9時方向に配置)
+      const toRad = deg => (180 - deg) * (Math.PI / 180);
+
+      ZODIAC.forEach((z, i) => {
+        const startRad = toRad(i * 30);
+        const endRad = toRad((i + 1) * 30);
+
+        // 境界線
+        ctx.beginPath();
+        ctx.moveTo(cx + rInner * Math.cos(startRad), cy + rInner * Math.sin(startRad));
+        ctx.lineTo(cx + rOuter * Math.cos(startRad), cy + rOuter * Math.sin(startRad));
+        ctx.strokeStyle = "#cbd5e1";
+        ctx.stroke();
+
+        // サイン記号
+        const midRad = toRad(i * 30 + 15);
+        const symbolR = (rOuter + rZodiac) / 2;
+        ctx.font = "bold 16px sans-serif";
+        ctx.fillStyle = "#334155";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(z.symbol, cx + symbolR * Math.cos(midRad), cy + symbolR * Math.sin(midRad));
+      });
+
+      // アスペクト線の描画 (内円の中)
+      aspects.forEach(asp => {
+        const p1 = planets.find(p => p.name === asp.p1);
+        const p2 = planets.find(p => p.name === asp.p2);
+        if (!p1 || !p2) return;
+
+        const rad1 = toRad(p1.totalDeg);
+        const rad2 = toRad(p2.totalDeg);
+
+        ctx.strokeStyle = asp.color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx + rInner * Math.cos(rad1), cy + rInner * Math.sin(rad1));
+        ctx.lineTo(cx + rInner * Math.cos(rad2), cy + rInner * Math.sin(rad2));
+        ctx.stroke();
+      });
+
+      // 惑星シンボルの描画
+      planets.forEach(p => {
+        const rad = toRad(p.totalDeg);
+        const plR = (rZodiac + rInner) / 2;
+        const x = cx + plR * Math.cos(rad);
+        const y = cy + plR * Math.sin(rad);
+
+        // 小さなプロット丸
+        ctx.beginPath();
+        ctx.arc(cx + rInner * Math.cos(rad), cy + rInner * Math.sin(rad), 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+
+        // シンボル
+        ctx.font = "bold 14px sans-serif";
+        ctx.fillStyle = p.color;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(p.symbol, x, y);
+      });
+    }
+
+    // AIプロンプト生成
+    function generateAiPrompt(y, m, d, h, min, prefName, timeUnknown, planets, aspects) {
+      const timeStr = timeUnknown ? "不明（12:00仮定）" : `${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}`;
+
+      const planetLines = planets.map(p => `- ${p.name} (${p.symbol}): ${p.signName} ${p.degInSign}°${p.minInSign}'`).join("\n");
+      const aspectLines = aspects.length > 0 
+        ? aspects.map(a => `- ${a.p1} - ${a.p2} : ${a.type} (実度数角: ${a.angle}°)`).join("\n")
+        : "- メジャーアスペクトなし";
+
+      const prompt = `# 指示
+以下の出生データおよび精密天体計算結果に基づき、西洋占星術の厳密なロジックを用いて対象者のネイタルチャートを徹底的に多角解析してください。
+
+# 前提方針
+- 誰にでも当てはまるような耳障りの良い慰め、抽象的でスピリチュアルな一般論（バーナム効果）は一切排除してください。
+- 各天体のサイン度数、エレメント/クオリティの過不足、タイトなアスペクトがもたらす「内的葛藤・行動の衝動・職人／技術的適性」を論理的かつ冷徹に構造化して記述してください。
+
+# 出生情報
+- 生年月日: ${y}年${m}月${d}日
+- 出生時間: ${timeStr}
+- 出生地: ${prefName}
+
+# 算出済み天体配置（黄経度数）
+${planetLines}
+
+# 形成アスペクト一覧
+${aspectLines}
+
+# 解析フォーマット
+1. 構造サマリー（天体分布バランス、特異点、際立ったアスペクト）
+2. 職能・技術・適性分析（組織適性／独立職人適性、突き抜けた才能、生産性）
+3. 心理的葛藤とボトルネック（特にハードアスペクトによる緊張と、それを昇華するためのトリガー）
+4. 具体的な実生活・制作・キャリアへの戦略指針`;
+
+      document.getElementById("promptText").value = prompt;
+    }
+
+    function copyPrompt() {
+      const txt = document.getElementById("promptText");
+      txt.select();
+      navigator.clipboard.writeText(txt.value);
+      alert("AI解析プロンプトをクリップボードにコピーしました！そのままAIに貼り付けてご利用ください。");
     }
   </script>
 
