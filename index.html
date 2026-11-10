@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ホロスコープ AI精密プロンプト生成ツール</title>
+  <!-- NASA基準の天文学計算ライブラリ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/astronomy-engine/2.1.19/astronomy.browser.min.js"></script>
   <style>
     :root {
       --bg: #f8fafc;
@@ -124,11 +126,11 @@
     }
     .chart-info {
       margin-top: 1rem;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       text-align: left;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-      gap: 0.4rem;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.5rem;
       background: #f1f5f9;
       padding: 0.8rem;
       border-radius: 6px;
@@ -162,7 +164,7 @@
     }
     textarea {
       width: 100%;
-      height: 250px;
+      height: 260px;
       padding: 0.8rem;
       font-family: Consolas, Monaco, "Courier New", monospace;
       font-size: 0.85rem;
@@ -178,7 +180,7 @@
 
   <div class="container">
     <h1>ホロスコープ AI精密プロンプト生成</h1>
-    <p class="desc">生年月日・時間・出生地から天体位置を計算し、円形チャート描画とプロンプトを生成します。</p>
+    <p class="desc">NASA/JPL計算基準による厳密な天体度数算出と円形チャート描画ツール。</p>
 
     <div class="section-title">出生データの入力</div>
 
@@ -212,7 +214,7 @@
       </div>
     </div>
 
-    <button class="btn" id="calcBtn" onclick="runCalculation()">ホロスコープ作成 ＆ プロンプト生成</button>
+    <button class="btn" id="calcBtn" onclick="runPreciseCalculation()">ホロスコープ作成 ＆ プロンプト生成</button>
 
     <!-- チャート表示 -->
     <div class="chart-container" id="chartArea">
@@ -233,53 +235,53 @@
 
   <script>
     const PREFECTURES = [
-      { name: "北海道 (札幌)", lat: 43.06, lng: 141.35 },
-      { name: "青森県", lat: 40.82, lng: 140.74 },
-      { name: "岩手県 (盛岡)", lat: 39.70, lng: 141.15 },
-      { name: "宮城県 (仙台)", lat: 38.27, lng: 140.87 },
-      { name: "秋田県", lat: 39.72, lng: 140.10 },
-      { name: "山形県", lat: 38.24, lng: 140.36 },
-      { name: "福島県", lat: 37.75, lng: 140.47 },
-      { name: "茨城県 (水戸)", lat: 36.34, lng: 140.45 },
-      { name: "栃木県 (宇都宮)", lat: 36.57, lng: 139.88 },
-      { name: "群馬県 (前橋)", lat: 36.39, lng: 139.06 },
-      { name: "埼玉県", lat: 35.86, lng: 139.65 },
-      { name: "千葉県", lat: 35.60, lng: 140.12 },
-      { name: "東京都 (23区)", lat: 35.69, lng: 139.69 },
-      { name: "神奈川県 (横浜)", lat: 35.45, lng: 139.64 },
-      { name: "新潟県", lat: 37.90, lng: 139.02 },
-      { name: "富山県", lat: 36.70, lng: 137.21 },
-      { name: "石川県 (金沢)", lat: 36.59, lng: 136.63 },
-      { name: "福井県", lat: 36.07, lng: 136.22 },
-      { name: "山梨県 (甲府)", lat: 35.66, lng: 138.57 },
-      { name: "長野県", lat: 36.65, lng: 138.18 },
-      { name: "岐阜県", lat: 35.39, lng: 136.72 },
-      { name: "静岡県", lat: 34.98, lng: 138.38 },
-      { name: "愛知県 (名古屋)", lat: 35.18, lng: 136.91 },
-      { name: "三重県 (津)", lat: 34.73, lng: 136.51 },
-      { name: "滋賀県 (大津)", lat: 35.00, lng: 135.87 },
-      { name: "京都府", lat: 35.02, lng: 135.76 },
-      { name: "大阪府", lat: 34.69, lng: 135.52 },
-      { name: "兵庫県 (神戸)", lat: 34.69, lng: 135.18 },
-      { name: "奈良県", lat: 34.69, lng: 135.83 },
-      { name: "和歌山県", lat: 34.23, lng: 135.17 },
-      { name: "鳥取県", lat: 35.50, lng: 134.24 },
-      { name: "島根県 (松江)", lat: 35.47, lng: 133.05 },
-      { name: "岡山県", lat: 34.66, lng: 133.94 },
-      { name: "広島県", lat: 34.40, lng: 132.46 },
-      { name: "山口県", lat: 34.19, lng: 131.47 },
-      { name: "徳島県", lat: 34.07, lng: 134.56 },
-      { name: "香川県 (高松)", lat: 34.34, lng: 134.04 },
-      { name: "愛媛県 (松山)", lat: 33.84, lng: 132.77 },
-      { name: "高知県", lat: 33.56, lng: 133.53 },
-      { name: "福岡県", lat: 33.61, lng: 130.42 },
-      { name: "佐賀県", lat: 33.25, lng: 130.30 },
-      { name: "長崎県", lat: 32.74, lng: 129.87 },
-      { name: "熊本県", lat: 32.79, lng: 130.74 },
-      { name: "大分県", lat: 33.24, lng: 131.61 },
-      { name: "宮崎県", lat: 31.91, lng: 131.42 },
-      { name: "鹿児島県", lat: 31.56, lng: 130.56 },
-      { name: "沖縄県 (那覇)", lat: 26.21, lng: 127.68 }
+      { name: "北海道 (札幌)", lat: 43.06417, lng: 141.34694 },
+      { name: "青森県", lat: 40.82444, lng: 140.74 },
+      { name: "岩手県 (盛岡)", lat: 39.70361, lng: 141.1525 },
+      { name: "宮城県 (仙台)", lat: 38.26889, lng: 140.87194 },
+      { name: "秋田県", lat: 39.71861, lng: 140.1025 },
+      { name: "山形県", lat: 38.24056, lng: 140.36333 },
+      { name: "福島県", lat: 37.75, lng: 140.46778 },
+      { name: "茨城県 (水戸)", lat: 36.34139, lng: 140.44667 },
+      { name: "栃木県 (宇都宮)", lat: 36.56583, lng: 139.88361 },
+      { name: "群馬県 (前橋)", lat: 36.39111, lng: 139.06083 },
+      { name: "埼玉県", lat: 35.85694, lng: 139.64889 },
+      { name: "千葉県", lat: 35.60472, lng: 140.12333 },
+      { name: "東京都 (23区)", lat: 35.68944, lng: 139.69167 },
+      { name: "神奈川県 (横浜)", lat: 35.44778, lng: 139.6425 },
+      { name: "新潟県", lat: 37.90222, lng: 139.02361 },
+      { name: "富山県", lat: 36.69528, lng: 137.21139 },
+      { name: "石川県 (金沢)", lat: 36.59444, lng: 136.62556 },
+      { name: "福井県", lat: 36.06528, lng: 136.22194 },
+      { name: "山梨県 (甲府)", lat: 35.66389, lng: 138.56833 },
+      { name: "長野県", lat: 36.65139, lng: 138.18111 },
+      { name: "岐阜県", lat: 35.39111, lng: 136.72222 },
+      { name: "静岡県", lat: 34.97694, lng: 138.38306 },
+      { name: "愛知県 (名古屋)", lat: 35.18028, lng: 136.90667 },
+      { name: "三重県 (津)", lat: 34.73028, lng: 136.50861 },
+      { name: "滋賀県 (大津)", lat: 35.00444, lng: 135.86833 },
+      { name: "京都府", lat: 35.02139, lng: 135.75556 },
+      { name: "大阪府", lat: 34.68639, lng: 135.52 },
+      { name: "兵庫県 (神戸)", lat: 34.69139, lng: 135.18306 },
+      { name: "奈良県", lat: 34.68528, lng: 135.83278 },
+      { name: "和歌山県", lat: 34.22611, lng: 135.1675 },
+      { name: "鳥取県", lat: 35.50361, lng: 134.23833 },
+      { name: "島根県 (松江)", lat: 35.47222, lng: 133.05056 },
+      { name: "岡山県 (岡山市)", lat: 34.66167, lng: 133.935 },
+      { name: "広島県", lat: 34.39639, lng: 132.45944 },
+      { name: "山口県", lat: 34.18583, lng: 131.47139 },
+      { name: "徳島県", lat: 34.06583, lng: 134.55944 },
+      { name: "香川県 (高松)", lat: 34.34028, lng: 134.04333 },
+      { name: "愛媛県 (松山)", lat: 33.84167, lng: 132.76611 },
+      { name: "高知県", lat: 33.55972, lng: 133.53111 },
+      { name: "福岡県", lat: 33.60639, lng: 130.41806 },
+      { name: "佐賀県", lat: 33.24944, lng: 130.29889 },
+      { name: "長崎県", lat: 32.74472, lng: 129.87361 },
+      { name: "熊本県", lat: 32.78972, lng: 130.74167 },
+      { name: "大分県", lat: 33.23806, lng: 131.6125 },
+      { name: "宮崎県", lat: 31.91111, lng: 131.42389 },
+      { name: "鹿児島県", lat: 31.56028, lng: 130.55806 },
+      { name: "沖縄県 (那覇)", lat: 26.2125, lng: 127.68111 }
     ];
 
     const ZODIAC = [
@@ -295,6 +297,19 @@
       { name: "山羊座", symbol: "♑" },
       { name: "水瓶座", symbol: "♒" },
       { name: "魚座",   symbol: "♓" }
+    ];
+
+    const PLANET_TARGETS = [
+      { id: "Sun", name: "太陽", symbol: "☉", color: "#f59e0b" },
+      { id: "Moon", name: "月", symbol: "☽", color: "#475569" },
+      { id: "Mercury", name: "水星", symbol: "☿", color: "#06b6d4" },
+      { id: "Venus", name: "金星", symbol: "♀", color: "#ec4899" },
+      { id: "Mars", name: "火星", symbol: "♂", color: "#ef4444" },
+      { id: "Jupiter", name: "木星", symbol: "♃", color: "#8b5cf6" },
+      { id: "Saturn", name: "土星", symbol: "♄", color: "#334155" },
+      { id: "Uranus", name: "天王星", symbol: "♅", color: "#0284c7" },
+      { id: "Neptune", name: "海王星", symbol: "♆", color: "#3b82f6" },
+      { id: "Pluto", name: "冥王星", symbol: "♇", color: "#1e293b" }
     ];
 
     window.addEventListener("DOMContentLoaded", () => {
@@ -320,18 +335,20 @@
       for (let h = 0; h < 24; h++) {
         const v = h.toString().padStart(2, "0");
         const opt = new Option(v, v);
-        if (h === 12) opt.selected = true;
+        if (h === 4) opt.selected = true;
         hourSel.add(opt);
       }
       const minSel = document.getElementById("birthMinute");
       for (let min = 0; min < 60; min++) {
         const v = min.toString().padStart(2, "0");
-        minSel.add(new Option(v, v));
+        const opt = new Option(v, v);
+        if (min === 21) opt.selected = true;
+        minSel.add(opt);
       }
       const prefSel = document.getElementById("prefecture");
       PREFECTURES.forEach((p, idx) => {
         const opt = new Option(p.name, idx);
-        if (p.name.includes("愛知県")) opt.selected = true;
+        if (p.name.includes("岡山県")) opt.selected = true;
         prefSel.add(opt);
       });
     });
@@ -345,62 +362,8 @@
       }
     }
 
-    // ユリウス日計算 (J2000.0基準)
-    function getDaysSinceJ2000(year, month, day, hour, minute) {
-      let y = year;
-      let m = month;
-      if (m <= 2) { y -= 1; m += 12; }
-      const A = Math.floor(y / 100);
-      const B = 2 - A + Math.floor(A / 4);
-      const utHours = hour + (minute / 60) - 9; // JST(UTC+9) -> UTC
-      const jd = Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + day + B - 1524.5 + (utHours / 24);
-      return jd - 2451545.0;
-    }
-
-    function norm(deg) {
-      deg = deg % 360;
-      return deg < 0 ? deg + 360 : deg;
-    }
-
-    // 各天体の黄経度数計算（高速高精度アルゴリズム）
-    function computePlanets(d) {
-      // 太陽
-      const L_sun = norm(280.466 + 0.9856474 * d);
-      const g_sun = norm(357.528 + 0.9856003 * d) * (Math.PI / 180);
-      const sunLon = norm(L_sun + 1.915 * Math.sin(g_sun) + 0.020 * Math.sin(2 * g_sun));
-
-      // 月
-      const L_moon = norm(218.316 + 13.176396 * d);
-      const M_moon = norm(134.963 + 13.064993 * d) * (Math.PI / 180);
-      const F_moon = norm(93.272 + 13.229350 * d) * (Math.PI / 180);
-      const moonLon = norm(L_moon + 6.289 * Math.sin(M_moon) - 1.274 * Math.sin(M_moon - 2 * g_sun) + 0.658 * Math.sin(2 * g_sun));
-
-      // 水星〜冥王星の平均黄経と中心差補正
-      const merLon = norm(252.25 + 4.092334 * d + 23.44 * Math.sin((norm(174.79 + 4.092334 * d)) * Math.PI / 180));
-      const venLon = norm(181.98 + 1.602130 * d + 0.77 * Math.sin((norm(50.41 + 1.602130 * d)) * Math.PI / 180));
-      const marLon = norm(355.43 + 0.524033 * d + 10.69 * Math.sin((norm(19.37 + 0.524033 * d)) * Math.PI / 180));
-      const jupLon = norm(34.35 + 0.083091 * d + 5.55 * Math.sin((norm(20.45 + 0.083091 * d)) * Math.PI / 180));
-      const satLon = norm(50.08 + 0.033459 * d + 6.36 * Math.sin((norm(317.02 + 0.033459 * d)) * Math.PI / 180));
-      const uraLon = norm(314.05 + 0.011731 * d);
-      const nepLon = norm(304.35 + 0.005981 * d);
-      const pluLon = norm(238.93 + 0.003968 * d);
-
-      return [
-        { name: "太陽", symbol: "☉", lon: sunLon, color: "#f59e0b" },
-        { name: "月", symbol: "☽", lon: moonLon, color: "#475569" },
-        { name: "水星", symbol: "☿", lon: merLon, color: "#06b6d4" },
-        { name: "金星", symbol: "♀", lon: venLon, color: "#ec4899" },
-        { name: "火星", symbol: "♂", lon: marLon, color: "#ef4444" },
-        { name: "木星", symbol: "♃", lon: jupLon, color: "#8b5cf6" },
-        { name: "土星", symbol: "♄", lon: satLon, color: "#334155" },
-        { name: "天王星", symbol: "♅", lon: uraLon, color: "#0284c7" },
-        { name: "海王星", symbol: "♆", lon: nepLon, color: "#3b82f6" },
-        { name: "冥王星", symbol: "♇", lon: pluLon, color: "#1e293b" }
-      ];
-    }
-
     function degToZodiac(deg) {
-      const d = norm(deg);
+      let d = (deg % 360 + 360) % 360;
       const signIdx = Math.floor(d / 30);
       const signDeg = Math.floor(d % 30);
       const signMin = Math.floor((d % 1) * 60);
@@ -413,7 +376,13 @@
       };
     }
 
-    function runCalculation() {
+    // 精密計算の実行
+    function runPreciseCalculation() {
+      if (typeof Astronomy === "undefined") {
+        alert("天文学計算ライブラリの読み込み中です。数秒待ってからもう一度お試しください。");
+        return;
+      }
+
       try {
         const y = parseInt(document.getElementById("birthYear").value);
         const m = parseInt(document.getElementById("birthMonth").value);
@@ -423,15 +392,32 @@
         const pref = PREFECTURES[document.getElementById("prefecture").value];
         const timeUnknown = document.getElementById("timeUnknown").checked;
 
-        const days = getDaysSinceJ2000(y, m, d, h, min);
-        const rawPlanets = computePlanets(days);
+        // JST(UTC+9) -> UTC
+        const utcDate = new Date(Date.UTC(y, m - 1, d, h - 9, min, 0));
+        const astroTime = Astronomy.MakeTime(utcDate);
+        const observer = new Astronomy.Observer(pref.lat, pref.lng, 0);
 
-        const planets = rawPlanets.map(p => {
-          const z = degToZodiac(p.lon);
-          return { ...p, ...z };
+        // 各天体の黄道座標（黄経）を算出
+        const planets = PLANET_TARGETS.map(pt => {
+          let lon = 0;
+          if (pt.id === "Sun") {
+            const pos = Astronomy.SunPosition(astroTime);
+            lon = pos.elon;
+          } else if (pt.id === "Moon") {
+            const vec = Astronomy.GeoMoon(astroTime);
+            const ecl = Astronomy.Ecliptic(vec);
+            lon = ecl.elon;
+          } else {
+            const body = Astronomy.Body[pt.id];
+            const equ = Astronomy.Equator(body, astroTime, observer, true, true);
+            const ecl = Astronomy.Ecliptic(equ);
+            lon = ecl.elon;
+          }
+          const z = degToZodiac(lon);
+          return { ...pt, ...z };
         });
 
-        // アスペクト検出
+        // アスペクト判定
         const aspects = [];
         const rules = [
           { type: "Conjunction (合)", angle: 0, orb: 7, color: "#2563eb" },
@@ -466,7 +452,7 @@
         // リスト表示
         const listEl = document.getElementById("planetList");
         listEl.innerHTML = planets.map(p => `
-          <div><strong>${p.symbol} ${p.name}:</strong> ${p.signName} ${p.deg}°${p.min}'</div>
+          <div><strong>${p.symbol} ${p.name}:</strong> ${p.signName} ${p.deg}°${p.min.toString().padStart(2, '0')}'</div>
         `).join("");
 
         // プロンプト生成
@@ -474,12 +460,10 @@
 
         document.getElementById("chartArea").style.display = "block";
         document.getElementById("outputArea").style.display = "block";
-
-        // スクロールして結果を見せる
         document.getElementById("chartArea").scrollIntoView({ behavior: 'smooth' });
 
       } catch (err) {
-        alert("計算中にエラーが発生しました: " + err.message);
+        alert("計算処理中にエラーが発生しました: " + err.message);
       }
     }
 
@@ -503,6 +487,7 @@
         ctx.stroke();
       });
 
+      // 牡羊座0度を左（9時方向）に配置
       const toRad = deg => (180 - deg) * (Math.PI / 180);
 
       // 12サイン分割
@@ -560,13 +545,13 @@
 
     function makePrompt(y, m, d, h, min, prefName, timeUnknown, planets, aspects) {
       const timeStr = timeUnknown ? "不明（12:00仮定）" : `${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}`;
-      const pLines = planets.map(p => `- ${p.name} (${p.symbol}): ${p.signName} ${p.deg}°${p.min}'`).join("\n");
+      const pLines = planets.map(p => `- ${p.name} (${p.symbol}): ${p.signName} ${p.deg}°${p.min.toString().padStart(2, '0')}'`).join("\n");
       const aLines = aspects.length > 0
         ? aspects.map(a => `- ${a.p1} - ${a.p2} : ${a.type} (${a.angle}°)`).join("\n")
         : "- メジャーアスペクトなし";
 
       const prompt = `# 指示
-以下の出生データおよび精密天体計算結果に基づき、西洋占星術の厳密なロジックを用いて対象者のネイタルチャートを徹底的に多角解析してください。
+以下の出生データおよび精密天体計算結果（黄経度数）に基づき、西洋占星術の厳密なロジックを用いて対象者のネイタルチャートを徹底的に多角解析してください。
 
 # 前提方針
 - 誰にでも当てはまるような耳障りの良い慰め、抽象的でスピリチュアルな一般論（バーナム効果）は一切排除してください。
